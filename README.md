@@ -30,6 +30,14 @@ ssh -i ~/.ssh/ec2/id_ed25519 admis@$NAT_INSTANCE_ID
 sudo cat /var/log/cloud-init-output.log
 ```
 
+## 通信経路のデバッグ
+
+Reachability Analyzer を使う
+
+## 参考資料
+
+- [NAT インスタンス - AWS/ドキュメント Amazon VPC/ユーザガイド](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/VPC_NAT_Instance.html)
+
 ---
 
 ## 付録
