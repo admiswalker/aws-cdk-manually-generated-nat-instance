@@ -1,6 +1,6 @@
 #cloud-config
 cloud_final_modules:
-  - [users-groups, always]
+  - [scripts-user, users-groups, always]
 users: # run by "users-groups" option
   - default
   - name: admis
@@ -12,8 +12,12 @@ users: # run by "users-groups" option
 runcmd: # run by "scripts-user" option
   - echo ""
   - echo ""
-  - echo "--- begin --- example of run command -------------------------------------------"
-  - echo "Hello cloud-config / runcmd"
+  - echo "--- begin --- NAT deamon installation ------------------------------------------"
+  - sudo sysctl -w net.ipv4.ip_forward=1
+  - sudo /sbin/iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+  - sudo yum install iptables-services
+  - sudo service iptables save
+  - sudo systemctl enable iptables # automatic startup of iptables
   - echo "------------------------------------------------------------------------ end ---"
   - echo ""
   - echo ""

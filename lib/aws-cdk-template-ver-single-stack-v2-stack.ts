@@ -13,15 +13,11 @@ export class AwsCdkTplStack extends Stack {
     super(scope, id, props);
 
     // VPC
-    const nat_instance = ec2.NatProvider.instance({
-      instanceType: new InstanceType('t3a.nano'),
-      machineImage: new NatInstanceImage(),
-      defaultAllowedTraffic: ec2.NatTrafficDirection.OUTBOUND_ONLY,
-    });
-    const vpc = new ec2.Vpc(this, this.constructor.name+'-vpc_for_ec2_and_ssm', {
+    const vpc = new ec2.Vpc(this, 'vpc_for_ec2_and_ssm', {
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
-      natGateways: 1,
-      natGatewayProvider: nat_instance,
+      natGateways: 0,
+      //natGateways: 1,
+      //natGatewayProvider: nat_instance,
       subnetConfiguration: [
         {
           name: 'Public',
@@ -37,7 +33,7 @@ export class AwsCdkTplStack extends Stack {
     });
 
     // SSM
-    const ssm_iam_role = new iam.Role(this, this.constructor.name+'-iam_role_for_ssm', {
+    const nat_iam_role = new iam.Role(this, 'iam_role_for_nat_ssm', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
@@ -45,13 +41,56 @@ export class AwsCdkTplStack extends Stack {
       ],
     });
 
-    vpc.addInterfaceEndpoint(this.constructor.name+'-InterfaceEndpoint_ssm', {
+    // NAT
+    const nat_config = ec2.UserData.forLinux({shebang: ''});
+    nat_config.addCommands(fs.readFileSync('./lib/ec2_nat.yaml', 'utf8'));
+    const nat_userData = new ec2.MultipartUserData();
+    nat_userData.addPart(ec2.MultipartBody.fromUserData(nat_config, 'text/cloud-config; charset="utf8"'));
+
+    const nat_sg = new ec2.SecurityGroup(this, 'NatSg', {
+      allowAllOutbound: true,
+      securityGroupName: 'Nat Sev Security Group',
+      vpc: vpc,
+    });
+    
+    const nat_instance = new ec2.Instance(this, 'NatInstance', {
+      instanceType: new ec2.InstanceType('t3a.nano'), // 2 vCPU, 0.5 GB
+//    machineImage: ec2.MachineImage.genericLinux({'us-west-2': 'ami-XXXXXXXXXXXXXXXXX'}),
+      machineImage: new ec2.AmazonLinuxImage({
+        generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX,
+        edition: ec2.AmazonLinuxEdition.STANDARD,
+        virtualization: ec2.AmazonLinuxVirt.HVM,
+        storage: ec2.AmazonLinuxStorage.GENERAL_PURPOSE,
+      }),
+      vpc: vpc,
+//    blockDevices: [{
+//	    deviceName: '/dev/sda1',
+//	    volume: ec2.BlockDeviceVolume.ebs(30),
+//    }],
+      vpcSubnets: vpc.selectSubnets({
+        subnetGroupName: 'Private',
+      }),
+      role: nat_iam_role,
+      userData: nat_userData,
+      securityGroup: nat_sg,
+    });
+
+    // SSM
+    const ssm_iam_role = new iam.Role(this, 'iam_role_for_ssm', {
+      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
+        iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentAdminPolicy'),
+      ],
+    });
+
+    vpc.addInterfaceEndpoint('InterfaceEndpoint_ssm', {
       service: ec2.InterfaceVpcEndpointAwsService.SSM,
     });
-    vpc.addInterfaceEndpoint(this.constructor.name+'-InterfaceEndpoint_ec2_messages', {
+    vpc.addInterfaceEndpoint('InterfaceEndpoint_ec2_messages', {
       service: ec2.InterfaceVpcEndpointAwsService.EC2_MESSAGES,
     });
-    vpc.addInterfaceEndpoint(this.constructor.name+'-InterfaceEndpoint_ssm_messages', {
+    vpc.addInterfaceEndpoint('InterfaceEndpoint_ssm_messages', {
       service: ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
     });
 
@@ -68,7 +107,7 @@ export class AwsCdkTplStack extends Stack {
       vpc: vpc,
     });
     
-    const ec2_instance = new ec2.Instance(this, this.constructor.name+'-general_purpose_ec2', {
+    const ec2_instance = new ec2.Instance(this, 'General_purpose_ec2', {
       instanceType: new ec2.InstanceType('t3a.nano'), // 2 vCPU, 0.5 GB
 //    machineImage: ec2.MachineImage.genericLinux({'us-west-2': 'ami-XXXXXXXXXXXXXXXXX'}),
       machineImage: new ec2.AmazonLinuxImage({
