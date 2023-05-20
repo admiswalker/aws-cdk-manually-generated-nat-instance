@@ -16,8 +16,6 @@ export class AwsCdkTplStack extends Stack {
     const vpc = new ec2.Vpc(this, 'vpc_for_ec2_and_ssm', {
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
       natGateways: 0,
-      //natGateways: 1,
-      //natGatewayProvider: nat_instance,
       subnetConfiguration: [
         {
           name: 'Public',
@@ -84,6 +82,10 @@ export class AwsCdkTplStack extends Stack {
       sourceDestCheck: false, // Required for NAT Instance
       subnetId: vpc.publicSubnets[0].subnetId,
       userData: cdk.Fn.base64(fs.readFileSync('./lib/ec2_nat.yaml', 'utf8')),
+      tags: [{
+        "key": "Name",
+        "value": this.constructor.name+"/NatInstance"
+      }]
     });
     const nat_instanceId = nat_CfnInstance.ref;
     /*
