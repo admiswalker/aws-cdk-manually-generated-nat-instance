@@ -13,7 +13,7 @@ runcmd: # run by "scripts-user" option
   - echo ""
   - echo ""
   - echo "--- begin --- yum update -------------------------------------------------------"
-  - suydo yum update -y
+  - sudo yum update -y
   - echo "------------------------------------------------------------------------ end ---"
   - echo ""
   - echo ""
