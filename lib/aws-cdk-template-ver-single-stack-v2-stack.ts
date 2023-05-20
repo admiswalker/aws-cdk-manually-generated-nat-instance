@@ -68,7 +68,7 @@ export class AwsCdkTplStack extends Stack {
 //	    volume: ec2.BlockDeviceVolume.ebs(30),
 //    }],
       vpcSubnets: vpc.selectSubnets({
-        subnetGroupName: 'Private',
+        subnetGroupName: 'Public',
       }),
       role: nat_iam_role,
       userData: nat_userData,
