@@ -1,5 +1,13 @@
 # aws-cdk-template-ver-single-stack-v2
 
+ここでは，NAT Instance を ec2.CfnInstance で作成する．
+
+NAT Instance の作成方法で最も手軽なのは ec2.NatProvider.instance だが，
+この場合，ストレージを暗号化できないなど，細かな制約がある．
+
+今回は，NAT Insatance として AMD 系のインスタンスを使用したが，
+イメージから作成しているので，調整すれば t4 系のインスタンスでも NAT を利用できるはずである（たぶん）．
+
 ## 構成図
 
 ![](architecture.drawio.png)
@@ -15,6 +23,8 @@ ssh -i ~/.ssh/ec2/id_ed25519 admis@$EC2_INSTANCE_ID
 ```
 
 ## SSH アクセス (NAT)
+
+※ SSM 用の iam role を付けていないので，そのままでは接続できない．
 
 ```bash
 NAT_INSTANCE_ID=$(aws ec2 describe-instances \
