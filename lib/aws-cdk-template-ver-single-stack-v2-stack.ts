@@ -13,6 +13,7 @@ export class AwsCdkTplStack extends Stack {
     super(scope, id, props);
 
     // VPC
+    /*
     const vpc = new ec2.Vpc(this, 'AwsCdkTplStackVPC', {
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
       natGateways: 0,
@@ -29,7 +30,8 @@ export class AwsCdkTplStack extends Stack {
         },
       ],
     });
-    /*
+    //*/
+    //*
     const vpc = new ec2.Vpc(this, 'AwsCdkTplStackVPC', {
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
       natGateways: 0,
@@ -135,40 +137,6 @@ export class AwsCdkTplStack extends Stack {
       }]
     });
     const nat_instanceId = nat_CfnInstance.ref;
-    /*
-    const nat_config = ec2.UserData.forLinux({shebang: ''});
-    nat_config.addCommands(fs.readFileSync('./lib/ec2_nat.yaml', 'utf8'));
-    const nat_userData = new ec2.MultipartUserData();
-    nat_userData.addPart(ec2.MultipartBody.fromUserData(nat_config, 'text/cloud-config; charset="utf8"'));
-
-    const nat_sg = new ec2.SecurityGroup(this, 'NatSg', {
-      allowAllOutbound: true,
-      securityGroupName: 'Nat Sev Security Group',
-      vpc: vpc,
-    });
-    
-    const nat_instance = new ec2.Instance(this, 'NatInstance', {
-      instanceType: new ec2.InstanceType('t3a.nano'), // 2 vCPU, 0.5 GB
-//    machineImage: ec2.MachineImage.genericLinux({'us-west-2': 'ami-XXXXXXXXXXXXXXXXX'}),
-      machineImage: new ec2.AmazonLinuxImage({
-        generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
-        edition: ec2.AmazonLinuxEdition.STANDARD,
-        virtualization: ec2.AmazonLinuxVirt.HVM,
-        storage: ec2.AmazonLinuxStorage.GENERAL_PURPOSE,
-      }),
-      vpc: vpc,
-//    blockDevices: [{
-//	    deviceName: '/dev/sda1',
-//	    volume: ec2.BlockDeviceVolume.ebs(30),
-//    }],
-      vpcSubnets: vpc.selectSubnets({
-        subnetGroupName: 'Public',
-      }),
-      role: nat_iam_role,
-      userData: nat_userData,
-      securityGroup: nat_sg,
-    });
-    */
 
     // SSM
     const ssm_iam_role = new iam.Role(this, 'iam_role_for_ssm', {
