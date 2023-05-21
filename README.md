@@ -8,7 +8,7 @@ NAT Instance の作成方法で最も手軽なのは ec2.NatProvider.instance �
 - ARM 系インスタンス用のイメージを提供していない
 - ストレージを暗号化できない
 
-そこで，今回は下記条件の Nat Instance を手動作成した．
+そこで，今回は下記条件の Nat Instance を ec2.CfnInstance で作成した．
 - Amazon Linux 2
 - t4g.nano (ARM 系 CPU のインスタンス)
 - ストレージの暗号化
