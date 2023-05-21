@@ -12,6 +12,7 @@ export class AwsCdkTplStack extends Stack {
   constructor(scope: Construct, id: string, props?: AwsCdkTplStackProps) {
     super(scope, id, props);
 
+    //---
     // VPC
     /*
     const vpc = new ec2.Vpc(this, 'AwsCdkTplStackVPC', {
@@ -39,45 +40,56 @@ export class AwsCdkTplStack extends Stack {
     });
     cdk.Tags.of(vpc).add('Name', this.constructor.name+'/VPC');
     //---
-    // make subnets
-    const publicSubnet1 = new ec2.CfnSubnet(this, 'publicSubnet1', {
+    // IGW
+    const igw = new ec2.CfnInternetGateway(this, "IGW", {
+      tags: [{ key: "Name", value: "IGW" }]
+    });
+    const igwAttach = new ec2.CfnVPCGatewayAttachment(this, "IGW-attach", {
+      vpcId: vpc.vpcId,
+      internetGatewayId: igw.ref
+    });
+    //---
+    // public subnets
+    //*
+    const publicSN1 = new ec2.CfnSubnet(this, 'publicSN1', {
       vpcId: vpc.vpcId,
       cidrBlock: '10.0.0.0/24',
       availabilityZone: this.availabilityZones[0],
-      tags: [{key: 'Name', value: this.constructor.name+'/publicSubnet1'}]
+      tags: [{key: 'Name', value: this.constructor.name+'/publicSN1'}]
     });
-    const privateSubnet1 = new ec2.CfnSubnet(this, 'privateSubnet1', {
+    const publicSN1_RT = new ec2.CfnRouteTable(this, "publicSN1_RT", {
       vpcId: vpc.vpcId,
-      cidrBlock: '10.0.1.0/24',
-      availabilityZone: this.availabilityZones[0],
-      tags: [{key: 'Name', value: this.constructor.name+'/privateSubnet1'}]
+      tags: [{ key: "Name", value: "publicSN1-RT" }]
     });
-    //---
-    // public subnet settings
-    const igw = new ec2.CfnInternetGateway(this, "igw", {
-      tags: [{ key: "Name", value: "igw" }]
-    });
-    const publicRouteTable = new ec2.CfnRouteTable(this, "public-rt", {
-      vpcId: vpc.vpcId,
-      tags: [{ key: "Name", value: "public-rt" }]
-    });
-    const publicRoute = new ec2.CfnRoute(this, "public-rt-nat", {
-      routeTableId: publicRouteTable.ref,
+    const publicSN1_IGW_R = new ec2.CfnRoute(this, "publicSN1-R-IGW", {
+      routeTableId: publicSN1_RT.ref,
       destinationCidrBlock: "0.0.0.0/0",
       gatewayId: igw.ref
     });
+    const publicSN1_association = new ec2.CfnSubnetRouteTableAssociation(this, "publicSN1-RT-association", {
+      routeTableId: publicSN1_RT.ref,
+      subnetId: publicSN1.ref
+    });
     //---
-    // private subnet settings
-    const privateRouteTable = new ec2.CfnRouteTable(this, "private-rt", {
+    // private subnet
+    //*
+    const privateSN1 = new ec2.CfnSubnet(this, 'privateSN1', {
       vpcId: vpc.vpcId,
-      tags: [{ key: "Name", value: "private-rt" }]
+      cidrBlock: '10.0.1.0/24',
+      availabilityZone: this.availabilityZones[0],
+      tags: [{key: 'Name', value: this.constructor.name+'/privateSN1'}]
     });
-    const privateRoute = new ec2.CfnRoute(this, "private-rt-nat", {
-      routeTableId: privateRouteTable.ref,
-      destinationCidrBlock: "0.0.0.0/0",
+    const privateSN1_RT = new ec2.CfnRouteTable(this, "privateSN1-RT", {
+      vpcId: vpc.vpcId,
+      tags: [{ key: "Name", value: "privateSN1-RT" }]
     });
-    //*/
+    const privateSN1_association = new ec2.CfnSubnetRouteTableAssociation(this, "privateSN1-RT-association", {
+      routeTableId: privateSN1_RT.ref,
+      subnetId: privateSN1.ref
+    });
+    //---
 
+    //*
     // SSM
     const nat_iam_role = new iam.Role(this, 'iam_role_for_nat_ssm', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
@@ -128,8 +140,8 @@ export class AwsCdkTplStack extends Stack {
       instanceType: 't3a.nano', // 2 vCPU, 0.5 GB
       securityGroupIds: [nat_sg.securityGroupId],
       sourceDestCheck: false, // Required for NAT Instance
-      //subnetId: publicSubnet1.attrSubnetId, // vpc.publicSubnets[0].subnetId,
-      subnetId: vpc.publicSubnets[0].subnetId,
+      subnetId: publicSN1.attrSubnetId, // vpc.publicSubnets[0].subnetId,
+      //subnetId: vpc.publicSubnets[0].subnetId,
       userData: cdk.Fn.base64(fs.readFileSync('./lib/ec2_nat.yaml', 'utf8')),
       tags: [{
         "key": "Name",
@@ -138,6 +150,13 @@ export class AwsCdkTplStack extends Stack {
     });
     const nat_instanceId = nat_CfnInstance.ref;
 
+    // add to Private subnet Route Table
+    const privateSN1_NAT_R = new ec2.CfnRoute(this, "privateSN1-RT-NAT", {
+      routeTableId: privateSN1_RT.ref,
+      destinationCidrBlock: "0.0.0.0/0",
+      instanceId: nat_instanceId, //natGatewayId:,
+    });
+/*
     // SSM
     const ssm_iam_role = new iam.Role(this, 'iam_role_for_ssm', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
@@ -163,13 +182,13 @@ export class AwsCdkTplStack extends Stack {
     cloud_config.addCommands(user_data_script)
     const multipartUserData = new ec2.MultipartUserData();
     multipartUserData.addPart(ec2.MultipartBody.fromUserData(cloud_config, 'text/cloud-config; charset="utf8"'));
-    /*
-    const ec2_sg = new ec2.SecurityGroup(this, 'Ec2Sg', {
-      allowAllOutbound: true,
-      securityGroupName: 'EC2 Sev Security Group',
-      vpc: vpc,
-    });
-    */
+    
+//    const ec2_sg = new ec2.SecurityGroup(this, 'Ec2Sg', {
+//      allowAllOutbound: true,
+//      securityGroupName: 'EC2 Sev Security Group',
+//      vpc: vpc,
+//    });
+    
     const ec2_instance = new ec2.Instance(this, 'General_purpose_ec2', {
       instanceType: new ec2.InstanceType('t3a.nano'), // 2 vCPU, 0.5 GB
 //    machineImage: ec2.MachineImage.genericLinux({'us-west-2': 'ami-XXXXXXXXXXXXXXXXX'}),
@@ -184,14 +203,15 @@ export class AwsCdkTplStack extends Stack {
 //	    deviceName: '/dev/sda1',
 //	    volume: ec2.BlockDeviceVolume.ebs(30),
 //    }],
-      //vpcSubnets: vpc.selectSubnets({subnets: privateSubnet1}), //vpc.selectSubnets({subnetGroupName: 'Private',}),
-      vpcSubnets: vpc.selectSubnets({subnetGroupName: 'Private',}),
+      vpcSubnets: vpc.selectSubnets({subnets: privateSubnet1}), //vpc.selectSubnets({subnetGroupName: 'Private',}),
+      //vpcSubnets: vpc.selectSubnets({subnetGroupName: 'Private',}),
       role: ssm_iam_role,
       userData: multipartUserData,
       securityGroup: ec2_sg,
     });
 
     //nat_instance.connections.allowFrom(ec2_sg, ec2.Port.allTraffic());
+    //*/
 
     //---
   }
