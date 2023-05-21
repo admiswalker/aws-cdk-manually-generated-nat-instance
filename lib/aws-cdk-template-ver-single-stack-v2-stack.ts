@@ -65,7 +65,8 @@ export class AwsCdkTplStack extends Stack {
       kernel: ec2.AmazonLinuxKernel.KERNEL5_X,
       virtualization: ec2.AmazonLinuxVirt.HVM,
       storage: ec2.AmazonLinuxStorage.GENERAL_PURPOSE,
-      cpuType: ec2.AmazonLinuxCpuType.X86_64,
+      //cpuType: ec2.AmazonLinuxCpuType.X86_64,
+      cpuType: ec2.AmazonLinuxCpuType.ARM_64,
     }).getImage(this).imageId;
     const nat_CfnInstance = new ec2.CfnInstance(this, 'NatInstance', {
       blockDeviceMappings: [{
@@ -79,7 +80,8 @@ export class AwsCdkTplStack extends Stack {
         }
       }],
       imageId: nat_machineImageId,
-      instanceType: 't3a.nano', // 2 vCPU, 0.5 GB
+      //instanceType: 't3a.nano', // 2 vCPU, 0.5 GB (AMD)
+      instanceType: 't4g.nano', // 2 vCPU, 0.5 GB (ARM)
       securityGroupIds: [nat_sg.securityGroupId],
       sourceDestCheck: false, // Required by NAT Instance Operation
       subnetId: vpc.publicSubnets[0].subnetId,
