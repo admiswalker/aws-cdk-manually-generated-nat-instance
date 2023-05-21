@@ -38,6 +38,7 @@ Reachability Analyzer を使う
 
 - [令和なのに NAT インスタンスを手作りして使ってみた](https://dev.classmethod.jp/articles/nat-instance-handmaid/)
 - [NAT インスタンス - AWS/ドキュメント Amazon VPC/ユーザガイド](https://docs.aws.amazon.com/ja_jp/vpc/latest/userguide/VPC_NAT_Instance.html)
+- [cdkで不要なルートテーブルを作らずにvpcを作成したメモ](https://qiita.com/hibohiboo/items/cf953c3a0efdcc1e2d9c#%E3%82%BD%E3%83%BC%E3%82%B9)
 
 ---
 
