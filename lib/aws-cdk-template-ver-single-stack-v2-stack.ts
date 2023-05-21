@@ -5,6 +5,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { InstanceType, NatInstanceImage, NatProvider } from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Stack, StackProps } from 'aws-cdk-lib';
+import { SubnetGroup } from 'aws-cdk-lib/aws-rds';
 
 interface AwsCdkTplStackProps extends StackProps {
 }
@@ -14,7 +15,7 @@ export class AwsCdkTplStack extends Stack {
 
     //---
     // VPC
-    /*
+    //*
     const vpc = new ec2.Vpc(this, 'AwsCdkTplStackVPC', {
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
       natGateways: 0,
@@ -33,6 +34,7 @@ export class AwsCdkTplStack extends Stack {
     });
     //*/
     //*
+    /*
     const vpc = new ec2.Vpc(this, 'AwsCdkTplStackVPC', {
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
       natGateways: 0,
@@ -50,12 +52,11 @@ export class AwsCdkTplStack extends Stack {
     });
     //---
     // public subnets
-    //*
     const publicSN1 = new ec2.CfnSubnet(this, 'publicSN1', {
       vpcId: vpc.vpcId,
       cidrBlock: '10.0.0.0/24',
       availabilityZone: this.availabilityZones[0],
-      tags: [{key: 'Name', value: this.constructor.name+'/publicSN1'}]
+      tags: [{key: 'Name', value: this.constructor.name+'/publicSN1'}],
     });
     const publicSN1_RT = new ec2.CfnRouteTable(this, "publicSN1_RT", {
       vpcId: vpc.vpcId,
@@ -72,7 +73,6 @@ export class AwsCdkTplStack extends Stack {
     });
     //---
     // private subnet
-    //*
     const privateSN1 = new ec2.CfnSubnet(this, 'privateSN1', {
       vpcId: vpc.vpcId,
       cidrBlock: '10.0.1.0/24',
@@ -87,6 +87,7 @@ export class AwsCdkTplStack extends Stack {
       routeTableId: privateSN1_RT.ref,
       subnetId: privateSN1.ref
     });
+    //*/
     //---
 
     //*
@@ -140,8 +141,8 @@ export class AwsCdkTplStack extends Stack {
       instanceType: 't3a.nano', // 2 vCPU, 0.5 GB
       securityGroupIds: [nat_sg.securityGroupId],
       sourceDestCheck: false, // Required for NAT Instance
-      subnetId: publicSN1.attrSubnetId, // vpc.publicSubnets[0].subnetId,
-      //subnetId: vpc.publicSubnets[0].subnetId,
+      //subnetId: publicSN1.attrSubnetId, // vpc.publicSubnets[0].subnetId,
+      subnetId: vpc.publicSubnets[0].subnetId,
       userData: cdk.Fn.base64(fs.readFileSync('./lib/ec2_nat.yaml', 'utf8')),
       tags: [{
         "key": "Name",
@@ -150,13 +151,13 @@ export class AwsCdkTplStack extends Stack {
     });
     const nat_instanceId = nat_CfnInstance.ref;
 
-    // add to Private subnet Route Table
+    // add Nat Instance to the Private Subnet 1 Route Table
     const privateSN1_NAT_R = new ec2.CfnRoute(this, "privateSN1-RT-NAT", {
-      routeTableId: privateSN1_RT.ref,
+      routeTableId: vpc.privateSubnets[0].routeTable.routeTableId,//privateSN1_RT.ref,
       destinationCidrBlock: "0.0.0.0/0",
       instanceId: nat_instanceId, //natGatewayId:,
     });
-/*
+
     // SSM
     const ssm_iam_role = new iam.Role(this, 'iam_role_for_ssm', {
       assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
@@ -165,17 +166,28 @@ export class AwsCdkTplStack extends Stack {
         iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentAdminPolicy'),
       ],
     });
-
+    
+    //*
     vpc.addInterfaceEndpoint('InterfaceEndpoint_ssm', {
       service: ec2.InterfaceVpcEndpointAwsService.SSM,
+//      subnets: {
+//        //subnetGroupName: 'AwsCdkTplStack/privateSN1',
+//        //subnets: publicSN1.ref,
+//        //subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
+//        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+//        availabilityZones: [cdk.Stack.of(this).availabilityZones[0]],
+//      },
+//      securityGroups: [ec2_sg],
     });
+    //*/
+    //*
     vpc.addInterfaceEndpoint('InterfaceEndpoint_ec2_messages', {
       service: ec2.InterfaceVpcEndpointAwsService.EC2_MESSAGES,
     });
     vpc.addInterfaceEndpoint('InterfaceEndpoint_ssm_messages', {
       service: ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
     });
-
+    //*
     // EC2 Instance
     const cloud_config = ec2.UserData.forLinux({shebang: ''})
     const user_data_script = fs.readFileSync('./lib/ec2_user-data.yaml', 'utf8');
@@ -203,15 +215,14 @@ export class AwsCdkTplStack extends Stack {
 //	    deviceName: '/dev/sda1',
 //	    volume: ec2.BlockDeviceVolume.ebs(30),
 //    }],
-      vpcSubnets: vpc.selectSubnets({subnets: privateSubnet1}), //vpc.selectSubnets({subnetGroupName: 'Private',}),
-      //vpcSubnets: vpc.selectSubnets({subnetGroupName: 'Private',}),
+      vpcSubnets: vpc.selectSubnets({subnetGroupName: 'Private',}),
+      //vpcSubnets: vpc.selectSubnets({subnetGroupName: 'AwsCdkTplStack/privateSN1',}),
       role: ssm_iam_role,
       userData: multipartUserData,
       securityGroup: ec2_sg,
     });
-
-    //nat_instance.connections.allowFrom(ec2_sg, ec2.Port.allTraffic());
     //*/
+    //nat_instance.connections.allowFrom(ec2_sg, ec2.Port.allTraffic());
 
     //---
   }
