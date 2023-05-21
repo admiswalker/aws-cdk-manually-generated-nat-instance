@@ -1,4 +1,4 @@
-# aws-cdk-template-ver-single-stack-v2
+# aws-cdk-manually-generated-nat-instance
 
 ここでは，NAT Instance を ec2.CfnInstance で作成する．
 
